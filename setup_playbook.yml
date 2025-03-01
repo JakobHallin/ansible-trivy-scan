@@ -1,0 +1,19 @@
+- name: setup for play #description name for playbook
+  hosts: ubuntu_server #targets that will be used from the inventory
+  become: yes #root privilalges
+
+  tasks:
+    - name: update packets #task1 update
+      apt:
+        update_cache: yes
+
+    - name: install Nginx #task2 install ngnix
+      apt:
+        name: nginx
+        state: present
+
+    - name: start and activate ngnix #start and activate nginx
+      service:
+        name: nginx
+        state: started
+        enabled: yes

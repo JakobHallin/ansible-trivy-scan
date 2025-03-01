@@ -1,0 +1,22 @@
+- name: install trivy
+  hosts: ubuntu_server
+  become: yes
+  tasks:
+    - name: install dependency
+      package:
+        name: curl
+        state: present
+
+    - name: download
+      shell: curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.18.3
+      args:
+        creates: /usr/local/bin/trivy
+
+    - name: verify install
+      command: trivy --version
+      register: trivyV
+
+    - name: show
+      debug:
+        msg: "{{ trivyV.stdout }}"
+
