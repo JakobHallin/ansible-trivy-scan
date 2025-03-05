@@ -1,0 +1,3 @@
+- name: setup for play #description name for playbook
+  hosts: ubuntu_server #targets that will be used from the inventory
+  #become: yes #root privilalges
