@@ -1,11 +1,17 @@
 - name: scan system with trivy
   hosts: ubuntu_server
-  become: yes
+  #become: yes
   tasks:
     - name: run trivy
       command: trivy image nginx:latest #trivy fs /
       register: scan_result
 
-    - name: show scan
-      debug:
-        msg: "{{ scan_result.stdout }}"
+    - name: save register to file
+      local_action:
+        module: copy
+        content: "{{ scan_result.stdout }}"
+        dest: "{{ lookup('env', 'PWD') }}/info.txt"
+
+   # - name: show scan
+    #  debug:
+     #   msg: "{{ scan_result.stdout }}"
