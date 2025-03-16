@@ -1,0 +1,91 @@
+# This file is a template, and might need editing before it works on your project.  
+# This is a sample GitLab CI/CD configuration file that should run without any modifications.
+# It demonstrates a basic 3 stage CI/CD pipeline. Instead of real tests or scripts,
+# it uses echo commands to simulate the pipeline execution.
+#
+# A pipeline is composed of independent jobs that run scripts, grouped into stages.
+# Stages run in sequential order, but jobs within stages run in parallel.
+#
+# For more information, see: https://docs.gitlab.com/ee/ci/yaml/#stages
+#
+# You can copy and paste this template into a new `.gitlab-ci.yml` file.
+# You should not add this template to an existing `.gitlab-ci.yml` file by using the `include:` keyword.
+#
+# To contribute improvements to CI/CD templates, please follow the Development guide at:
+# https://docs.gitlab.com/development/cicd/templates/
+# This specific template is located at:
+# https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Getting-Started.gitlab-ci.yml
+
+stages:          # List of stages for jobs, and their order of execution
+  - build
+  - test
+  - trivysetup
+  - securityScan
+  - deploy
+
+build-job:       # This job runs in the build stage, which runs first.
+  stage: build
+  script:
+    - echo "Compiling the code..."
+    - echo "Compile complete."
+
+unit-test-job:   # This job runs in the test stage.
+  stage: test    # It only starts when the job in the build stage completes successfully.
+  script:
+    - echo "Running unit tests... This will take about 60 seconds."
+    - sleep 1
+    - echo "Code coverage is 90%"
+
+lint-test-job:   # This job also runs in the test stage.
+  stage: test    # It can run at the same time as unit-test-job (in parallel).
+  script:
+    - echo "Linting code... This will take about 10 seconds."
+    - sleep 2
+    - echo "No lint issues found."
+#install trivy before
+install-trivy-job:
+  stage: trivysetup
+  image: ubuntu:latest
+  before_script:
+    - apt update && apt install -y ansible sshpass
+    - ansible --version
+    - apt install iputils-ping -y
+    - apt install iproute2 -y
+#testing and trying to understand the gitlab runner
+#I want to reach the target host on the local network with 10.0.0.8
+# The gitlab runner running as a docker and spawns docker and use the defualt dockernetwork wich is isolated
+# I can see the local docker gateway and can ping it but I cant reache the localnetwork 10.0.0.x
+# To acces it there are several methods I tough out 
+# 1: using host=local sharing the docker share the same ip as the local machine (this remove the isolation of the docker)
+# 2: configure the dockernetwork
+# 3: use routeforward 
+  script:
+    #see if i can connect
+    #- ansible all -i inventory.ini -m ping -vvvv --extra-vars "ansible_ssh_pass=$ANSIBLE_SSH_PASSWORD ansible_become_pass=$ANSIBLE_SSH_PASSWORD"
+    - whoami
+    - ip a
+    - ip route
+    - hostname -I
+    - ping -c 4 $(ip route | awk '/default/ { print $3 }') #sse what this do
+    - ping -c 4 127.0.0.1 #pinging it self
+    - ping -c 3 172.17.0.1 
+    - ping -c 3 10.0.0.5 #ping the host machine
+    - ping -c 3 10.0.0.8 #the local machine I want to reache
+    - echo "install trivy with anisble playbook"
+    - ansible-playbook -i inventory.ini setup_playbook.yml -vvvv --extra-vars "ansible_ssh_pass=$ANSIBLE_SSH_PASSWORD ansible_become_pass=$ANSIBLE_SSH_PASSWORD"
+#test setting up trivy scanner
+trivy-scan-job:
+  stage: securityScan
+  image: ubuntu:latest
+  before_script:
+    - apt update && apt install -y ansible sshpass
+  script:
+      - echo "start running anisble playbook"
+      - ansible-playbook -i inventory.ini trivy_scan.yml
+
+deploy-job:      # This job runs in the deploy stage.
+  stage: deploy  # It only runs when *both* jobs in the test stage complete successfully. 
+  environment: production
+  script:
+    - echo "Deploying application..."
+    - echo "Application successfully deployed."
